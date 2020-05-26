@@ -2,18 +2,24 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 
 type dataDump struct {
-	dataLD map[string]string
+	dataLD []string
+	entireStruct string
 	output string
 	root bool
 }
 
 // -- Setters --
-func (d *dataDump) SetDataLD(data map[string]string) {
+func (d *dataDump) SetDataLD(data []string) {
 	d.dataLD = data
+}
+
+func (d *dataDump) SetEntireStruct(entirity string) {
+	d.entireStruct = entirity
 }
 
 func (d *dataDump) SetOutput(output string) {
@@ -25,17 +31,20 @@ func (d *dataDump) SetRoot(root bool) {
 }
 // -- Setters --
 
+
 func main() {
-	x := make(map[string]string)
-	x["/root/root.txt"] = "Password123"
-
-
 	model := dataDump{}
-	model.SetDataLD(x)
-	model.SetOutput("/tmp/out.tar")
-	model.SetRoot(false)
+	directories := []string{
+		"/home",
+		"....",
+	}
+	filetypes := []string{}
 
-	fmt.Println(model)
+	fetchFiles(directories, filetypes, &model)
+}
+
+func fetchFiles(directories []string, filetypes []string, m *dataDump) {
+	fmt.Println("INSERT HERE")
 }
 
 // The full program will stay private and not pushed here, due to the potential of scammed that way
