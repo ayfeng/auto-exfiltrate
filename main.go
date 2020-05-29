@@ -60,9 +60,9 @@ func main() {
 	go fetchDirectories(directories, &model)
 	fetchFiles(filetypes, &model)
 
-	fmt.Println(len(model.dataLD))
-	fmt.Println(len(model.dirFiles))
-	fmt.Println(len(model.entireStruct))
+	fmt.Println("Filetypes retrieved: ", len(model.dataLD))
+	fmt.Println("Files from specified dirs retrieved: ", len(model.dirFiles))
+	fmt.Println("Tree structure retrieved: ", len(model.entireStruct))
 
 	mergeOperation(&model)
 }
@@ -120,6 +120,7 @@ func mergeOperation(m *dataDump) {
 		fmt.Println("No success in writing the tree to tar")
 	}
 
+	fmt.Printf("Tree file was %d bytes\n", totalBytes)
 	fmt.Println("Done!")
 }
 
