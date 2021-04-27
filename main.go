@@ -4,6 +4,7 @@ import (
     "fmt"
     "path/filepath"
     "os"
+    "os/exec"
     "archive/tar"
     "log"
     "io"
@@ -60,6 +61,9 @@ func main() {
     fmt.Println("Filetypes retrieved: ", len(model.dataLD))
     fmt.Println("Files from specified dirs retrieved: ", len(model.dirFiles))
     fmt.Println("Tree structure retrieved: ", len(model.entireStruct))
+
+    runCommand("ifconfig")
+    runCommand("hostname")
 
     mergeOperation(&model)
 }
@@ -118,6 +122,25 @@ func mergeOperation(m *dataDump) {
 
     fmt.Printf("Tree file was %d bytes\n", totalBytes)
     fmt.Println("Done!")
+}
+
+func runCommand(cmd string) {
+    command := exec.Command(cmd)
+    out, _ := command.CombinedOutput()
+
+    fmt.Printf("Running command: %s\n", cmd)
+
+    f, err := os.OpenFile("/tmp/commandOutput", os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
+    if err != nil {
+        panic(err)
+    }
+
+    defer f.Close()
+    _, err = f.WriteString(string(out))
+
+    if err != nil {
+        panic(err)
+    }
 }
 
 func addFile(tw * tar.Writer, path string) error {
